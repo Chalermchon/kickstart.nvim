@@ -98,11 +98,9 @@ vim.g.have_nerd_font = false
 -- NOTE: You can change these options as you wish!
 --  For more options, you can see `:help option-list`
 
--- Make line numbers default
+-- Display line number with relative number
 vim.opt.number = true
--- You can also add relative line numbers, to help with jumping.
---  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -166,12 +164,19 @@ vim.opt.confirm = true
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
+vim.opt.hlsearch = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
+vim.keymap.set('n', '[d', function()
+  vim.diagnostic.jump { count = -1, jump = true }
+end, { desc = 'Go to previous [D]iagnostic message' })
+vim.keymap.set('n', ']d', function()
+  vim.diagnostic.jump { count = 1, jump = true }
+end, { desc = 'Go to next [D]iagnostic message' })
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
--- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
 -- is not what someone will guess without a bit more experience.
 --
@@ -245,7 +250,7 @@ require('lazy').setup({
   -- with the first argument being the link and the following
   -- keys can be used to configure plugin behavior/loading/etc.
   --
-  -- Use `opts = {}` to automatically pass options to a plugin's `setup()` function, forcing the plugin to be loaded.
+  -- Use `opts = {}` to auto√matically pass options to a plugin's `setup()` function, forcing the plugin to be loaded.
   --
 
   -- Alternatively, use `config = function() ... end` for full control over the configuration.
@@ -343,6 +348,7 @@ require('lazy').setup({
         { '<leader>w', group = '[W]orkspace' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        { '<leader>o', group = '[O]rganize', mode = { 'n' } },
       },
     },
   },
@@ -769,10 +775,24 @@ require('lazy').setup({
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
-        -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettier', stop_after_first = true },
+        typescript = { 'prettier', stop_after_first = true },
+        javascriptreact = { 'prettier', stop_after_first = true },
+        typescriptreact = { 'prettier', stop_after_first = true },
       },
     },
+  },
+  {
+    'pmizio/typescript-tools.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
+    config = function()
+      require('typescript-tools').setup {
+        settings = {
+          separate_diagnostic_server = true,
+          expose_as_code_action = 'all',
+        },
+      }
+    end,
   },
 
   { -- Autocompletion
@@ -980,6 +1000,34 @@ require('lazy').setup({
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
+  { -- File Explorer / File Hierarchy
+    'nvim-neo-tree/neo-tree.nvim',
+    cmd = 'Neotree',
+    init = function()
+      vim.api.nvim_create_autocmd('BufEnter', {
+        -- make a group to be able to delete it later
+        group = vim.api.nvim_create_augroup('NeoTreeInit', { clear = true }),
+        callback = function()
+          local f = vim.fn.expand '%:p'
+          if vim.fn.isdirectory(f) ~= 0 then
+            vim.cmd('Neotree current dir=' .. f)
+            -- neo-tree is loaded now, delete the init autocmd
+            vim.api.nvim_clear_autocmds { group = 'NeoTreeInit' }
+          end
+        end,
+      })
+      -- keymaps
+      vim.keymap.set('n', '<leader>tf', '<Cmd>Neotree toggle<CR>', { desc = '[T]oggle [F]ile Explorer' })
+    end,
+    opts = {
+      filesystem = {
+        hijack_netrw_behavior = 'open_current',
+        filtered_items = {
+          visible = true,
+        },
+      },
+    },
+  },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
@@ -993,14 +1041,12 @@ require('lazy').setup({
   -- require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
-  -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
+  require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
-  --
-  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
   -- { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
